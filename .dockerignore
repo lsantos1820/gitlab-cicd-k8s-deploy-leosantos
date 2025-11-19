@@ -1,0 +1,28 @@
+# Ignore Git data
+.git
+.gitignore
+
+# Logs
+npm-debug.log
+yarn-error.log
+*.log
+
+# Node modules locais
+app/node_modules
+
+# Docker
+Dockerfile
+docker-compose.yml
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Documentação
+*.md
+README.md
+
+# Testes e cache
+coverage
+*.tgz
+junit.xml
