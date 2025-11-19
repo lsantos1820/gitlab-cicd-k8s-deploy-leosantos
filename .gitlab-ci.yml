@@ -1,6 +1,15 @@
 stages:
   - test
+  - docker
+  - deploy
 
+# Variáveis globais úteis
+variables:
+  # Imagem padrão do registry do GitLab (ajuste o caminho do grupo/projeto)
+  IMAGE_TAG: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+  K8S_NAMESPACE: "default"
+
+# 🔹 1. Stage de testes
 realizar_testes:
   stage: test
   image: node:20.7.0-alpine3.17
@@ -9,3 +18,46 @@ realizar_testes:
     - npm install
   script:
     - npm test
+
+# 🔹 2. Build e push da imagem Docker
+build_image:
+  stage: docker
+  image: docker:27.0.3-cli-alpine
+  services:
+    - docker:27.0.3-dind-alpine
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    # Login no registry do GitLab usando variáveis padrão da CI
+    - echo "Login no registry do GitLab..."
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+  script:
+    - echo "Construindo imagem Docker: $IMAGE_TAG"
+    - docker build -t "$IMAGE_TAG" .
+    - echo "Enviando imagem para o registry..."
+    - docker push "$IMAGE_TAG"
+  needs:
+    - realizar_testes
+  only:
+    - main
+
+# 🔹 3. Deploy em Kubernetes
+deploy_k8s:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  variables:
+    KUBECONFIG: "/tmp/kubeconfig"
+  before_script:
+    # Aqui assumimos que você salvou o conteúdo do kubeconfig
+    # em uma variável protegida chamada KUBECONFIG_CONTENT no GitLab
+    - echo "$KUBECONFIG_CONTENT" > "$KUBECONFIG"
+  script:
+    - echo "Aplicando manifests no Kubernetes..."
+    - kubectl config get-contexts
+    - kubectl config current-context
+    - kubectl -n "$K8S_NAMESPACE" apply -f k8s/
+  needs:
+    - build_image
+  only:
+    - main
+  when: manual   # deploy manual (clicando no botão na pipeline)
