@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitlab-cicd-app
+  labels:
+    app: gitlab-cicd-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gitlab-cicd-app
+  template:
+    metadata:
+      labels:
+        app: gitlab-cicd-app
+    spec:
+      containers:
+        - name: gitlab-cicd-app
+          image: IMAGE_TAG
+          ports:
+            - containerPort: 3000
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
