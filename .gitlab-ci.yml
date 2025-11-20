@@ -5,7 +5,7 @@ stages:
 
 # Variáveis globais úteis
 variables:
-  # Imagem padrão do registry do GitLab (ajuste o caminho do grupo/projeto)
+  # Imagem padrão do registry do Gitlab (caminho é preenchido pelo próprio GitLab)
   IMAGE_TAG: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
   K8S_NAMESPACE: "default"
 
@@ -28,7 +28,6 @@ build_image:
   variables:
     DOCKER_TLS_CERTDIR: ""
   before_script:
-    # Login no registry do GitLab usando variáveis padrão da CI
     - echo "Login no registry do GitLab..."
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
   script:
@@ -48,16 +47,17 @@ deploy_k8s:
   variables:
     KUBECONFIG: "/tmp/kubeconfig"
   before_script:
-    # Aqui assumimos que você salvou o conteúdo do kubeconfig
-    # em uma variável protegida chamada KUBECONFIG_CONTENT no GitLab
+    # KUBECONFIG_CONTENT deve ser criada como variável protegida no GitLab
     - echo "$KUBECONFIG_CONTENT" > "$KUBECONFIG"
   script:
-    - echo "Aplicando manifests no Kubernetes..."
-    - kubectl config get-contexts
-    - kubectl config current-context
-    - kubectl -n "$K8S_NAMESPACE" apply -f k8s/
+    - echo "Aplicando Service..."
+    - kubectl -n "$K8S_NAMESPACE" apply -f k8s/service.yaml
+
+    - echo "Aplicando Deployment com IMAGE_TAG=$IMAGE_TAG..."
+    # Substitui IMAGE_TAG pelo valor real da imagem da pipeline
+    - sed "s#IMAGE_TAG#$IMAGE_TAG#g" k8s/deployment.yaml | kubectl -n "$K8S_NAMESPACE" apply -f -
   needs:
     - build_image
   only:
     - main
-  when: manual   # deploy manual (clicando no botão na pipeline)
+  when: manual
